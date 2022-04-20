@@ -1,6 +1,8 @@
 package com.demo.controller;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,7 +21,7 @@ public class UploadController {
     }
 
     @PostMapping("/upload")
-    public void upload(@RequestParam("file") MultipartFile file) throws IOException {
-        uploadService.upload(file);
+    public List<Map<String, String>> upload(@RequestParam("file") MultipartFile file) throws IOException {
+        return uploadService.upload(file);
     }
 }

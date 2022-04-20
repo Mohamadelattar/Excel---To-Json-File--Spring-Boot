@@ -1,11 +1,16 @@
 package com.demo.service;
 
+import static java.util.stream.Collectors.toMap;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -22,7 +27,12 @@ import com.demo.util.UploadUtil;
 @Service
 public class UploadService {
     private final UploadUtil uploadUtil;
-    public void upload(MultipartFile file) throws IOException {
+
+    public UploadService(UploadUtil uploadUtil) {
+        this.uploadUtil = uploadUtil;
+    }
+
+    public List<Map<String, String>> upload(MultipartFile file) throws IOException {
 
         Path tempDir = Files.createTempDirectory("");
 
@@ -34,25 +44,30 @@ public class UploadService {
 
         Sheet sheet = workbook.getSheetAt(0);
 
-        Stream<Row> rowStream = StreamSupport.stream(sheet.spliterator(), false);
+        Supplier<Stream<Row>> rowStreamSupplier = uploadUtil.getRowStreamSupplier(sheet);
 
-        Row headerRow = rowStream.findFirst().get();
+        Row headerRow = rowStreamSupplier.get().findFirst().get();
 
-        List<String> headerCells = StreamSupport.stream(headerRow.spliterator(), false)
+        List<String> headerCells = uploadUtil.getStream(headerRow)
             .map(Cell::getStringCellValue)
             .collect(Collectors.toList());
 
+        int colCount = headerCells.size();
+
         System.out.println(headerCells);
 
-        rowStream.forEach(row -> {
-            Stream<Cell> cellStream = StreamSupport.stream(row.spliterator(), false);
-            List<String> cellVals = cellStream.map(cell -> {
-                    String cellValue = cell.getStringCellValue();
-                    return cellValue;
-                })
+        return rowStreamSupplier.get()
+            .skip(1)
+            .map(row -> {
+            List<String> cellList = uploadUtil.getStream(row)
+                .map(Cell::getStringCellValue)
                 .collect(Collectors.toList());
-            System.out.println(cellVals);
-        });
+
+            return uploadUtil.cellIteratorSupplier(colCount)
+                .get()
+                .collect(toMap(headerCells::get, cellList::get));
+        })
+            .collect(Collectors.toList());
 
 
     }
